@@ -9,14 +9,22 @@ from transfer.store import mark_switch_completed, next_delivery_attempt, read_re
 
 def choose_next_adjustment(band, current, target):
     total = sum(current)
+    # The committed total must stay inside the band after every pool submission.
+    # When the room is already at the floor, only an increase can lead the move;
+    # a decrease is only safe while the room has room above the floor, and the
+    # delta is clamped so each single pool write keeps the total in [floor, ceiling].
     for index, pool in enumerate(POOL_NAMES):
         slots = current[index]
         delta = target[index] - slots
         if delta == 0:
             continue
-        if delta < 0 and total > band.floor:
+        if delta < 0:
+            if total <= band.floor:
+                continue
             delta = max(delta, band.floor - total)
-        elif delta > 0 and total < band.ceiling:
+        else:
+            if total >= band.ceiling:
+                continue
             delta = min(delta, band.ceiling - total)
         return pool, slots + delta
     return None

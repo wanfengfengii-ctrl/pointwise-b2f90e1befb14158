@@ -29,32 +29,47 @@ def _check_address(store, command):
         raise QuotaConflict('Command has an invalid slot count')
 
 
-def _read_latest_outcome(db, command):
-    row = db.execute('SELECT switch_id, step_id, slots FROM latest_delivery WHERE room = ?',
-                     (command.room,)).fetchone()
-    if row is None or row[:2] != (command.switch_id, command.step_id):
-        return None
-    if int(row[2]) != command.slots:
-        raise QuotaConflict('Step identity is bound to a different command')
-    return CommandOutcome(command, 'committed')
+def _read_history(db, command):
+    """Return the recorded slots for this exact command identity, or None."""
+    row = db.execute('''SELECT slots FROM delivery_history
+                        WHERE room = ? AND switch_id = ? AND step_id = ?''',
+                     (command.room, command.switch_id, command.step_id)).fetchone()
+    return None if row is None else int(row[0])
+
+
+def _latest_step(db, room, switch_id):
+    row = db.execute('''SELECT MAX(step_id) FROM delivery_history
+                        WHERE room = ? AND switch_id = ?''', (room, switch_id)).fetchone()
+    return row[0]
 
 
 def read_command_outcome(store, command, *, transaction=None):
     _check_address(store, command)
     if transaction is not None:
-        return _read_latest_outcome(transaction, command)
+        return _read_history(transaction, command)
     with store.open() as db:
-        return _read_latest_outcome(db, command)
+        return _read_history(db, command)
 
 
 def submit_quota_command(store, command):
     with store.write_transaction() as db:
-        original = read_command_outcome(store, command, transaction=db)
-        if original is not None:
-            return original
+        _check_address(store, command)
+        recorded = _read_history(db, command)
+        if recorded is not None:
+            # Same identity, same parameters: the original commit stands and the
+            # quota must not move again. Different parameters are a hard conflict.
+            if recorded != command.slots:
+                raise QuotaConflict('Step identity is bound to a different command')
+            return CommandOutcome(command, 'committed')
+
+        latest = _latest_step(db, command.room, command.switch_id)
+        if latest is not None and command.step_id < latest:
+            # A late delivery from an earlier step of this switch: it can never
+            # change the quota again, even if the caller never saw its reply.
+            return CommandOutcome(command, 'superseded')
+
         apply_quota_change(db, command.room, command.slots)
-        db.execute('''INSERT INTO latest_delivery (room, switch_id, step_id, slots) VALUES (?, ?, ?, ?)
-                      ON CONFLICT (room) DO UPDATE SET switch_id = excluded.switch_id,
-                          step_id = excluded.step_id, slots = excluded.slots''',
+        db.execute('''INSERT INTO delivery_history (room, switch_id, step_id, slots)
+                      VALUES (?, ?, ?, ?)''',
                    (command.room, command.switch_id, command.step_id, str(command.slots)))
     return CommandOutcome(command, 'committed')

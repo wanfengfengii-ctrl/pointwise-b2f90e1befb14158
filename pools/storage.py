@@ -35,11 +35,12 @@ class PoolStore:
                     room TEXT PRIMARY KEY NOT NULL,
                     slots TEXT NOT NULL
                 );
-                CREATE TABLE IF NOT EXISTS latest_delivery (
-                    room TEXT PRIMARY KEY NOT NULL REFERENCES quotas(room),
+                CREATE TABLE IF NOT EXISTS delivery_history (
+                    room TEXT NOT NULL,
                     switch_id TEXT NOT NULL,
                     step_id INTEGER NOT NULL,
-                    slots TEXT NOT NULL
+                    slots TEXT NOT NULL,
+                    PRIMARY KEY (room, switch_id, step_id)
                 );
             ''')
 
