@@ -1,0 +1,11 @@
+{
+  "before_maintenance": [
+    {"segment": "intro-1", "work": 4}, {"segment": "intro-2", "work": 3},
+    {"segment": "intro-3", "work": 4}, {"segment": "intro-4", "work": 2},
+    {"segment": "intro-5", "work": 4}, {"segment": "intro-6", "work": 4},
+    {"segment": "intro-7", "work": 2}, {"segment": "intro-8", "work": 3},
+    {"segment": "queue-lead", "work": 6}, {"segment": "queue-1", "work": 13},
+    {"segment": "queue-2", "work": 10}, {"segment": "queue-3", "work": 8}
+  ],
+  "after_maintenance": {"segment": "interview-1", "work": 4}
+}

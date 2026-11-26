@@ -1,0 +1,8 @@
+{
+  "opening": {"room": "main", "floor": 6, "ceiling": 10, "initial": {"A": 8, "B": 0}},
+  "cycle_work": 4,
+  "completion": {"segment": "intro-1", "pool": "A"},
+  "maintenance_switch": "S1",
+  "maintenance_pool": "A",
+  "return_switch": "S2"
+}
